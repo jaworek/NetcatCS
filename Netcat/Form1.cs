@@ -1,11 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Net.Sockets;
 using System.IO;
@@ -31,17 +25,43 @@ namespace Netcat
             }
         }
 
-        class WncTcpServer
+        abstract class Tcp
+        {
+            public TcpClient client;
+            public StreamReader sr;
+            public StreamWriter sw;
+            public Button b;
+            public TextBox t1, t2;
+            public SetTextCallback f;
+
+            public void tx(Object sender, EventArgs e)
+            {
+                String toClient;
+                toClient = t2.Text;
+                if (toClient != null) sw.WriteLine(toClient);
+                f("Me: " + toClient);
+                t2.Text = "";
+            }
+
+            public void rx()
+            {
+                String fromServer;
+                do
+                {
+                    fromServer = sr.ReadLine();
+                    if (fromServer != null) f("Client: " + fromServer);
+                }
+                while (fromServer != null);
+
+                System.Environment.Exit(0);
+            }
+        }
+
+        class WncTcpServer : Tcp
         {
             TcpListener listener;
-            TcpClient client;
-            StreamReader sr;
-            StreamWriter sw;
-            Button b;
-            TextBox t1, t2;
-            SetTextCallback f;
 
-            public WncTcpServer(ref Button bt, ref TextBox tb1, ref TextBox tb2, String port, SetTextCallback ff)
+            public WncTcpServer(ref Button bt, ref TextBox tb1, ref TextBox tb2, String port, SetTextCallback ff) : base()
             {
                 listener = new TcpListener(IPAddress.Parse("127.0.0.1"), int.Parse(port));
                 listener.Start();
@@ -62,40 +82,11 @@ namespace Netcat
                 Thread th = new Thread(rx);
                 th.Start();
             }
-
-            public void tx(Object sender, EventArgs e)
-            {
-                String toClient;
-                toClient = t2.Text;
-                if (toClient != null) sw.WriteLine(toClient);
-                f("Me: " + toClient);
-                t2.Text = "";
-            }
-
-            void rx()
-            {
-                String fromServer;
-                do
-                {
-                    fromServer = sr.ReadLine();
-                    if (fromServer != null) f("Client: " + fromServer);
-                }
-                while (fromServer != null);
-
-                System.Environment.Exit(0);
-            }
         }
 
-        class WncTcpClient
+        class WncTcpClient : Tcp
         {
-            TcpClient client;
-            StreamReader sr;
-            StreamWriter sw;
-            Button b;
-            TextBox t1, t2;
-            SetTextCallback f;
-
-            public WncTcpClient(ref Button bt, ref TextBox tb1, ref TextBox tb2, String rip, String rport, SetTextCallback ff)
+            public WncTcpClient(ref Button bt, ref TextBox tb1, ref TextBox tb2, String rip, String rport, SetTextCallback ff) : base()
             {
                 client = new TcpClient(rip, int.Parse(rport));
 
@@ -113,40 +104,30 @@ namespace Netcat
                 Thread th = new Thread(rx);
                 th.Start();
             }
+        }
+
+        abstract class Udp
+        {
+            public UdpClient client;
+            public String ip = null;
+            public int port;
+            public Button b;
+            public TextBox t1, t2;
+            public SetTextCallback f;
 
             public void tx(Object sender, EventArgs e)
             {
                 String toClient;
                 toClient = t2.Text;
-                if (toClient != null) sw.WriteLine(toClient);
+                if (toClient != null) client.Send(Encoding.ASCII.GetBytes(toClient), toClient.Length, ip, port);
                 f("Me: " + toClient);
                 t2.Text = "";
             }
-
-            void rx()
-            {
-                String fromServer;
-                do
-                {
-                    fromServer = sr.ReadLine();
-                    if (fromServer != null) f("Client: " + fromServer);
-                }
-                while (fromServer != null);
-
-                System.Environment.Exit(0);
-            }
         }
 
-        class WncUdpServer
+        class WncUdpServer : Udp
         {
-            UdpClient client;
-            String ip = null;
-            int port;
-            Button b;
-            TextBox t1, t2;
-            SetTextCallback f;
-
-            public WncUdpServer(ref Button bt, ref TextBox tb1, ref TextBox tb2, String lport, SetTextCallback ff)
+            public WncUdpServer(ref Button bt, ref TextBox tb1, ref TextBox tb2, String lport, SetTextCallback ff) : base()
             {
                 port = int.Parse(lport);
                 client = new UdpClient(port);
@@ -160,15 +141,6 @@ namespace Netcat
 
                 Thread th = new Thread(rx);
                 th.Start();
-            }
-
-            public void tx(Object sender, EventArgs e)
-            {
-                String toClient;
-                toClient = t2.Text;
-                if (toClient != null) client.Send(Encoding.ASCII.GetBytes(toClient), toClient.Length, ip, port);
-                f("Me: " + toClient);
-                t2.Text = "";
             }
 
             void rx()
@@ -189,16 +161,9 @@ namespace Netcat
             }
         }
 
-        class WncUdpClient
+        class WncUdpClient : Udp
         {
-            UdpClient client;
-            String ip = null;
-            int port;
-            Button b;
-            TextBox t1, t2;
-            SetTextCallback f;
-
-            public WncUdpClient(ref Button bt, ref TextBox tb1, ref TextBox tb2, String rip, String rport, SetTextCallback ff)
+            public WncUdpClient(ref Button bt, ref TextBox tb1, ref TextBox tb2, String rip, String rport, SetTextCallback ff) : base()
             {
                 client = new UdpClient();
 
@@ -214,15 +179,6 @@ namespace Netcat
 
                 Thread th = new Thread(rx);
                 th.Start();
-            }
-
-            public void tx(Object sender, EventArgs e)
-            {
-                String toClient;
-                toClient = t2.Text;
-                if (toClient != null) client.Send(Encoding.ASCII.GetBytes(toClient), toClient.Length, ip, port);
-                f("Me: " + toClient);
-                t2.Text = "";
             }
 
             void rx()
